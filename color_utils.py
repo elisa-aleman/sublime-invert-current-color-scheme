@@ -39,7 +39,7 @@ def invert_rgb(color):
 
 		a = color[3]
 		# perform alpha inversion here if needed
-		a = 1 - a
+		# a = 1 - a
 
 		return [r, g, b, a];
 

@@ -3,7 +3,7 @@ import sublime_plugin
 import sys
 import os
 
-from .color_utils import *	
+from .color_utils import *
 
 class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 
