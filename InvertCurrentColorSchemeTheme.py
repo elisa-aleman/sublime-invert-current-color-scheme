@@ -10,37 +10,45 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 	# Returns path witout extension
 	def return_current_color_scheme(self):
 
-		packages_path    = sublime.packages_path()
-		preferences_path = packages_path + '/User/Preferences.sublime-settings'
-
-		with open( preferences_path, 'r' ) as sublime_settings:
-			for line in sublime_settings:
-				if ( line.find('"color_scheme":') > -1 ):
-
-					scheme = line[ line.find('"color_scheme":') + 17: line.find('.tmTheme') ]
-
-		sublime_settings.close()
-
-		packages_path = packages_path.strip('Packages')
-		scheme_path    = packages_path + scheme 
-
-		return scheme_path
+		# when using this you will need to work out the first part of the run method since it doesn't expect the file extension
+		preferences = sublime.load_settings('Preferences.sublime-settings')
+		return preferences.get('color_scheme')
 
 	def run(self, edit):
 		
-		current_color_scheme = self.return_current_color_scheme() + '.tmTheme' 
-		new_color_scheme     = self.return_current_color_scheme() + '_Inverted.tmTheme'
+		current_color_scheme = self.return_current_color_scheme() 
+		new_color_scheme     = current_color_scheme.replace('.tmTheme', '_Inverted.tmTheme')
+
 
 		if ( current_color_scheme.find('_Inverted') > -1 ):
 			return sublime.error_message("Color scheme already inverted.")
 
+
+		# 
+
+		if not os.path.exists(os.path.join(sublime.packages_path(), 'User', 'InvertedColorSchemes')):
+			os.makedirs(os.path.join(sublime.packages_path(), 'User', 'InvertedColorSchemes'))
+
+		original_name = os.path.splitext(os.path.basename(current_color_scheme))[0]
+		name = original_name + '_Inverted'
+		scheme_path = os.path.join(sublime.packages_path(), 'User', 'InvertedColorSchemes', name + '.tmTheme')
+
+		#
+
+
+
+
+
+
+		scheme_text = sublime.load_resource(current_color_scheme)
+
 		# Opens scheme 
-		with open(current_color_scheme, 'r', errors='ignore') as original_color_scheme, open(new_color_scheme, 'w') as inverted_color_scheme:
+		with open(scheme_path, 'w') as inverted_color_scheme:
 
 			# original_color_scheme = original_color_scheme.decode('utf-8')
 
 			# Loop through file
-			for line in original_color_scheme:
+			for line in scheme_text:
 
 				# line=line.strip()
 
@@ -69,7 +77,7 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 				inverted_color_scheme.write(line)
 					
 		# Close original file
-		original_color_scheme.close()
+		inverted_color_scheme.close()
 
 		# Replace the settings file with a new one containing the inverted theme
 		packages_path        = sublime.packages_path()
