@@ -6,59 +6,17 @@ import sys
 import os
 
 from .color_utils import *
+from .path_utils import *
 
 class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
-		 	
-	# Returns path to root of sublime text directory relative to machine root
-	def return_st_root_dir(self):
-		return sublime.packages_path().replace('Packages', '')
-
-	# returns current scheme file path retlative to sublime text root directory 
-	def return_current_color_scheme_relative_to_st_root(self):
-		return sublime.load_settings('Preferences.sublime-settings').get('color_scheme')
-
-	# returns absolute path to current scheme file
-	def return_current_color_scheme_absolute_path(self):
-		return os.path.join(self.return_st_root_dir(), self.return_current_color_scheme_relative_to_st_root())
-
-	# returns current scheme file's name only
-	def return_current_color_scheme_name(self):
-		return os.path.basename(self.return_current_color_scheme_relative_to_st_root())
-
-	# returns path to inverted scheme relative to sublime text root directory
-	def return_inverted_color_scheme_relative_to_st_root(self):
-
-		if ( self.return_current_color_scheme_relative_to_st_root().find('Color Scheme - Default') > -1 ):
-			if not os.path.exists(os.path.join(sublime.packages_path(), 'Color Scheme - Inverted')):
-				os.makedirs(os.path.join(sublime.packages_path(), 'Color Scheme - Inverted'))
-			return os.path.join('Packages', 'Color Scheme - Inverted', self.return_inverted_color_scheme_name())
-
-		return self.return_current_color_scheme_relative_to_st_root().replace(self.return_current_color_scheme_name(), self.return_inverted_color_scheme_name())
-
-	# returns color scheme path formatted for color_scheme key in preferences file (X and Windows both using forward slash there.)
-	def return_inverted_color_scheme_formatted_for_preferences_file(self):
-		return self.return_inverted_color_scheme_relative_to_st_root().replace('\\', '/')
-
-	# returns inverted scheme's name
-	def return_inverted_color_scheme_name(self):
-		return self.return_current_color_scheme_name().replace('.tmTheme', '_Inverted.tmTheme')
-
-	# returns absolute path to inverted scheme, checks if current scheme is in default scheme package and creates inverted scheme's path appropriately
-	def return_inverted_color_scheme_absolute_path(self):
-		if ( self.return_current_color_scheme_relative_to_st_root().find('Color Scheme - Default') > -1 ):
-			if not os.path.exists(os.path.join(sublime.packages_path(), 'Color Scheme - Inverted')):
-				os.makedirs(os.path.join(sublime.packages_path(), 'Color Scheme - Inverted'))
-			return os.path.join(sublime.packages_path(), 'Color Scheme - Inverted', self.return_inverted_color_scheme_name())
-		
-		return self.return_current_color_scheme_absolute_path().replace(self.return_current_color_scheme_name(), self.return_inverted_color_scheme_name())
 
 	def run(self, edit):
 
-		if ( self.return_current_color_scheme_name().find('_Inverted') > -1 ):
+		if (return_current_color_scheme_name().find('_Inverted') > -1):
 			return sublime.error_message("Color scheme already inverted.")
 
 		# store current scheme data into string using load_resource, simplifies accessing schemes like the default ones since the are packed in default package.
-		current_scheme_text = sublime.load_resource(self.return_current_color_scheme_relative_to_st_root())
+		current_scheme_text = sublime.load_resource(return_current_color_scheme_relative_to_st_root())
 
 		# write out to temp file
 		print('Creating temp scheme file.')
@@ -67,7 +25,7 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 		current_scheme_temp.close()
 
 		# get the path we'll use for the inverted scheme
-		inverted_scheme_path = self.return_inverted_color_scheme_absolute_path()
+		inverted_scheme_path = return_inverted_color_scheme_absolute_path()
 
 		# Invert and write out to inverted scheme file
 		with open( os.path.join(sublime.packages_path(), 'current_scheme_temp.tmTheme'), 'r', errors='ignore') as scheme_text, open(inverted_scheme_path, 'w') as inverted_color_scheme:
@@ -106,8 +64,8 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 
 		# Update the settings file with the new scheme.
 		prefs = sublime.load_settings('Preferences.sublime-settings')	
-		print('Updateding preferences file with color scheme:' + self.return_inverted_color_scheme_formatted_for_preferences_file())
-		prefs.set('color_scheme', self.return_inverted_color_scheme_formatted_for_preferences_file())
+		print('Updating preferences file with color scheme:' + return_inverted_color_scheme_formatted_for_preferences_file())
+		prefs.set('color_scheme', return_inverted_color_scheme_formatted_for_preferences_file())
 		sublime.save_settings('Preferences.sublime-settings')
 
 		# Remove the temp file
