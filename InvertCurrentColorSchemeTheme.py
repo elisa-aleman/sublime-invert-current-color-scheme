@@ -4,7 +4,6 @@ import sublime
 import sublime_plugin
 import sys
 import os
-import xml.etree.ElementTree as ET
 
 from .color_utils import *
 
