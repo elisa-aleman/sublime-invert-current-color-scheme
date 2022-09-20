@@ -2,47 +2,73 @@ import sublime
 import sublime_plugin
 import os
 import re
-
+import colorsys
 
 class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 
-    def convert_hex_to_rgb(self, color):
+    #### COLORS
 
-        r = int(color[0:2], 16)
-        g = int(color[2:4], 16)
-        b = int(color[4:6], 16)
+    def convert_hsl_str_to_rgb(self, color_str):
+        '''
+        Before using colorsys:
+            Divide Hue by 360
+            Divide Saturation by 100
+            Divide Lightness by 100
+        After using colorsys:
+            Multiply rgb by 255
+        '''
+        if color_str.startswith("hsl("):
+            h_str,s_str,l_str = color_str.replace("hsl(","").replace(")","").replace(" ","").split(",")
+            h = int(h_str)/360
+            s = float(s_str.replace("%",""))/100
+            l = float(l_str.replace("%",""))/100
+            rgb_float = colorsys.hls_to_rgb(h,l,s)
+            rgb = [i*255 for i in rgb_float]
+            rgb = [round(i) for i in rgb]
+        if color_str.startswith("hsla("):
+            h_str,s_str,l_str,a_str = color_str.replace("hsla(","").replace(")","").replace(" ","").split(",")
+            h = int(h_str)/360
+            s = float(s_str.replace("%",""))/100
+            l = float(l_str.replace("%",""))/100
+            a = float(a_str)
+            rgb_float = colorsys.hls_to_rgb(h,l,s)
+            rgb = [i*255 for i in rgb_float]
+            rgb = [round(i) for i in rgb]
+            rgb.append(a)
+        return rgb
 
-        if(len(color) > 6):
+    def convert_rgb_to_hsl_str(self, rgb_color):
+        '''
+        Before using colorsys:
+            Divide rgb by 255
+        After using colorsys:
+            Multipy Hue by 360
+            Multipy Saturation by 100
+            Multipy Lightness by 100
+        '''
+        r = rgb_color[0]/255
+        g = rgb_color[1]/255
+        b = rgb_color[2]/255
+        hls_float = colorsys.rgb_to_hls(r,g,b)
+        h = round(hls_float[0]*360)
+        l = round(hls_float[1]*100)
+        s = round(hls_float[2]*100)
+        if len(rgb_color) == 3:
+            color_str = "hsl({}, {}%, {}%)".format(h,s,l)
+        elif len(rgb_color) == 4:
+            a = rgb_color[3]
+            color_str = "hsla({}, {}%, {}%, {})".format(h,s,l,a)
+        return color_str
 
-            a = (float(int(color[6:8], 16))) / 255
+    def invert_rgb(self, rgb_color):
 
-            return [r, g, b, a]
+        r = (rgb_color[0] * -1) + 255
+        g = (rgb_color[1] * -1) + 255
+        b = (rgb_color[2] * -1) + 255
 
-        return [r, g, b]
+        if(len(rgb_color) > 3):
 
-    def convert_rgb_to_hex(self, color):
-
-        a = format(color[0], '02X')
-        b = format(color[1], '02X')
-        c = format(color[2], '02X')
-
-        if(len(color) > 3):
-
-            d = format(int(round(color[3] * 255)), '02X')
-
-            return [a, b, c, d]
-
-        return [a, b, c]
-
-    def invert_rgb(self, color):
-
-        r = (color[0] * -1) + 255
-        g = (color[1] * -1) + 255
-        b = (color[2] * -1) + 255
-
-        if(len(color) > 3):
-
-            a = color[3]
+            a = rgb_color[3]
             # perform alpha inversion here if needed
             # a = 1 - a
 
@@ -50,101 +76,121 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 
         return [r, g, b]
 
-    def current_scheme_name(self):
-        return os.path.basename(self.current_scheme_relative_to_st_root())
-
-    def current_scheme_text(self):
-        return sublime.load_resource(self.current_scheme_relative_to_st_root())
-
-    def current_scheme_relative_to_st_root(self):
-        return sublime.load_settings('Preferences.sublime-settings').get('color_scheme')
-
-    def inverted_scheme_name(self):
-        return self.current_scheme_name().replace('.tmTheme', '_Inverted.tmTheme')
-
-    def inverted_scheme_absolute_path(self):
-        if not os.path.exists(os.path.join(sublime.packages_path(), 'Color Scheme - Inverted')):
-            os.makedirs(os.path.join(sublime.packages_path(),
-                                     'Color Scheme - Inverted'))
-        return os.path.join(sublime.packages_path(), 'Color Scheme - Inverted', self.inverted_scheme_name())
-
-    # returns color scheme path formatted for color_scheme key in preferences
-    # file (X and Windows both using forward slash there.)
-    def inverted_scheme_path_formatted_for_preferences_file(self):
-        return os.path.join('Packages', 'Color Scheme - Inverted', self.inverted_scheme_name()).replace('\\', '/')
-
-    def create_temp_scheme_file(self, text):
-        # write out to temp file
-        print('Creating temp scheme file.')
-        with open(self.temp_scheme_file_path(), 'w', errors='ignore') as current_scheme_temp:
-            current_scheme_temp.write(text)
-        current_scheme_temp.close()
-
-    def temp_scheme_file_path(self):
-        return os.path.join(sublime.packages_path(), 'current_scheme_temp.tmTheme')
+    def invert_color_str(self, color_str):
+        # inverts color
+        rgb_color = self.convert_hsl_str_to_rgb(color_str)
+        # inverted_color = self.convert_hex_to_rgb(inverted_color)
+        inverted_color = self.invert_rgb(rgb_color)
+        # inverted_color = self.convert_rgb_to_hex(inverted_color)
+        inverted_color_str = self.convert_rgb_to_hsl_str(inverted_color)
+        return inverted_color_str
 
     def find_color_in_string(self, string):
+        '''
+        Finds hsl() and hsla() colors that are used in the newer builds
+        '''
         try:
-            return re.search('(?:#|0x)?(?:[0-9a-fA-F]{2}){3,4}', string).group(0).replace('#', '')
+            return re.search("hsl(a*)\((.*?)\)",string).group(0)
         except AttributeError:
             # no color found in the original string
             return ''
 
-    def run(self, edit):
+    #### SCHEMES
 
-        if (self.current_scheme_name().find('_Inverted') > -1):
-            return sublime.error_message("Color scheme already inverted.")
+    def current_scheme_name(self):
+        return sublime.load_settings("Preferences.sublime-settings").get("color_scheme")
 
-        # store current scheme data into string using load_resource, simplifies
-        # accessing schemes like the default ones since the are packed in
-        # default package.
-        self.create_temp_scheme_file(self.current_scheme_text())
+    def current_scheme_text(self):
+        cur_resources = sublime.find_resources(self.current_scheme_name())
+        return sublime.load_resource(cur_resources[0])
+    
+    def current_scheme_dict(self):
+        return sublime.decode_value(self.current_scheme_text())
+
+    def inverted_scheme_name(self):
+        return self.current_scheme_name().replace('.sublime-color-scheme', '_Inverted.sublime-color-scheme')
+
+    def inverted_scheme_absolute_path(self):
+        if not os.path.exists(os.path.join(sublime.packages_path(), 'User')):
+            os.makedirs(os.path.join(sublime.packages_path(),
+                                     'User'))
+        # Has to be saved under the User folder for it to be read by the preferences file
+        return os.path.join(sublime.packages_path(), 'User', self.inverted_scheme_name())
+
+    def write_sublime_file(self, attr_dict, path):
+        sublime_text = sublime.encode_value(attr_dict, pretty=True)
+        with open(path, 'w', errors='ignore') as f:
+            f.write(sublime_text)
+
+    def temp_scheme_file_path(self):
+        return os.path.join(sublime.packages_path(), 'User', 'current_scheme_temp.sublime-color-scheme')
+
+    def invert_scheme(self):
+        # Load current scheme into a dictionary to easily access the keys
+        scheme_dict = self.current_scheme_dict()
+        
+        # Tried to add inverted_ to variable names but ended up repeat replacing some
+        # current_var_names = scheme_dict['variables']
+        # inverted_keys = {}
+
+        # # Invert colors in a dictionary first to access the same keys later
+        # for key in current_var_names.keys():
+        #     new_key = "inverted_"+key
+        #     inverted_keys[key] = new_key
+
+        # Empty string to keep changes
+        inverted_scheme_text = ""
+
+        # Load current scheme into temp file to read line by line
+        self.write_sublime_file(scheme_dict, self.temp_scheme_file_path())
 
         # Invert and write out to inverted scheme file
-        with open(self.temp_scheme_file_path(), 'r', errors='ignore') as scheme_text, open(self.inverted_scheme_absolute_path(), 'w') as inverted_color_scheme:
-
-            print('Inverting scheme.')
-
+        with open(self.temp_scheme_file_path(), 'r', errors='ignore') as scheme_text:
             # Loop through current scheme temp file
             for line in scheme_text:
-
                 # Grabs lines with colors
-                if (line.find('<string>#') > -1):
-
-                    # extracts color from <string>#xxxxxx</string> (update this to regex later?)
-                    # original_color = line[ line.find('<string>#') + 9:
-                    # line.find('</string>') ]
+                if (line.find('hsl') > -1):
                     original_color = self.find_color_in_string(line)
+                    inverted_color = self.invert_color_str(original_color)
+                    new_line = line.replace(original_color,inverted_color)
+                else:
+                    new_line = line
+                if not new_line.endswith('\n'):
+                    new_line+='\n'
+                inverted_scheme_text += new_line
 
-                    if (len(original_color) > 0):
-
-                        # if color is fff etc convert to 6 char form (update to
-                        # check if all chars are same later)
-                        if (len(original_color) == 3):
-                            original_color = original_color + original_color
-
-                        # inverts color
-                        color = self.convert_hex_to_rgb(original_color)
-                        color = self.invert_rgb(color)
-                        color = self.convert_rgb_to_hex(color)
-
-                        inverted_color = ''.join(str(e) for e in color)
-
-                        line = line.replace(original_color, inverted_color)
-
-                # writes out to inverted scheme file
-                inverted_color_scheme.write(line)
-
-        # Close original file
-        inverted_color_scheme.close()
-
-        # Update the settings file with the new scheme.
-        prefs = sublime.load_settings('Preferences.sublime-settings')
-        print('Updating preferences file with color scheme:' +
-              self.inverted_scheme_path_formatted_for_preferences_file())
-        prefs.set('color_scheme',
-                  self.inverted_scheme_path_formatted_for_preferences_file())
-        sublime.save_settings('Preferences.sublime-settings')
+        inverted_scheme_dict = sublime.decode_value(inverted_scheme_text)
 
         # Remove the temp file
         os.remove(self.temp_scheme_file_path())
+
+        return inverted_scheme_dict
+
+    #### MAIN
+
+    def run(self, edit):
+        ##### SCHEME INVERT
+        print("Color Scheme Invert process started")
+        if (self.current_scheme_name().find('_Inverted') > -1):
+            print("Reversing the inverted color scheme to the original")
+            original_name = self.current_scheme_name().replace("_Inverted","")
+            sublime.load_settings("Preferences.sublime-settings").erase("color_scheme")
+            sublime.load_settings("Preferences.sublime-settings").set("color_scheme", original_name)
+            sublime.save_settings('Preferences.sublime-settings')
+        else:
+            # Check if there's already an inverted scheme file
+            if not os.path.exists(self.inverted_scheme_absolute_path()):
+                print('Inverted scheme file not already made. Inverting scheme.')
+                inverted_scheme_dict = self.invert_scheme()
+                self.write_sublime_file(inverted_scheme_dict, self.inverted_scheme_absolute_path())
+
+            # Update the settings file with the new scheme.
+            print('Updating preferences file with color scheme:' +
+                  self.inverted_scheme_name())
+
+            sublime.load_settings("Preferences.sublime-settings").erase("color_scheme")
+            sublime.load_settings("Preferences.sublime-settings").set("color_scheme",
+                      self.inverted_scheme_name())
+            
+            sublime.save_settings('Preferences.sublime-settings')
+        print("Color Scheme Invert process completed")
