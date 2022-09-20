@@ -166,6 +166,73 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
 
         return inverted_scheme_dict
 
+    ##### THEMES (Not working properly yet)
+
+    # def current_theme_name(self):
+    #     return sublime.load_settings("Preferences.sublime-settings").get("theme")
+
+    # def current_theme_text(self):
+    #     cur_resources = sublime.find_resources(self.current_theme_name())
+    #     return sublime.load_resource(cur_resources[0])
+
+    # def current_theme_dict(self):
+    #     return sublime.decode_value(self.current_theme_text())
+
+    # def inverted_theme_name(self):
+    #     return self.current_theme_name().replace('.sublime-theme', '_Inverted.sublime-theme')
+
+    # def inverted_theme_absolute_path(self):
+    #     if not os.path.exists(os.path.join(sublime.packages_path(), 'User')):
+    #         os.makedirs(os.path.join(sublime.packages_path(),
+    #                                  'User'))
+    #     # Has to be saved under the User folder for it to be read by the preferences file
+    #     return os.path.join(sublime.packages_path(), 'User', self.inverted_theme_name())
+
+    # def temp_theme_file_path(self):
+    #     return os.path.join(sublime.packages_path(), 'User', 'current_theme_temp.sublime-theme')
+
+    # def invert_theme(self):
+    #     # Load current theme into a dictionary to easily access the keys
+    #     theme_dict = self.current_theme_dict()
+
+    #     # Empty string to keep changes
+    #     inverted_theme_text = ""
+
+    #     # Load current theme into temp file to read line by line
+    #     self.write_sublime_file(theme_dict, self.temp_theme_file_path())
+
+    #     # Invert and write out to inverted theme file
+    #     with open(self.temp_theme_file_path(), 'r', errors='ignore') as theme_text:
+    #         # Loop through current theme temp file
+    #         for line in theme_text:
+    #             # Grabs lines with colors
+    #             if (line.find('hsl') > -1):
+    #                 original_color = self.find_color_in_string(line)
+    #                 inverted_color = self.invert_color_str(original_color)
+    #                 new_line = line.replace(original_color,inverted_color)
+
+    #             ## Unlike schemes, not all colors are hsl, some are based around a base color and the light values are changed
+    #             ## This results in an incomplete inversion.
+
+    #             else:
+    #                 new_line = line
+    #             if not new_line.endswith('\n'):
+    #                 new_line+='\n'
+    #             inverted_theme_text += new_line
+
+    #     # Invert white variable
+    #     inverted_theme_text = inverted_theme_text.replace("white","black")
+
+    #     # Invert dark to light themes... I'd have to set up for both possibilities
+    #     inverted_theme_text = inverted_theme_text.replace("dark","light")
+
+    #     inverted_theme_dict = sublime.decode_value(inverted_theme_text)
+
+    #     # Remove the temp file
+    #     os.remove(self.temp_theme_file_path())
+
+    #     return inverted_theme_dict
+
     #### MAIN
 
     def run(self, edit):
@@ -194,3 +261,32 @@ class InvertCurrentColorSchemeCommand(sublime_plugin.TextCommand):
             
             sublime.save_settings('Preferences.sublime-settings')
         print("Color Scheme Invert process completed")
+        # Works properly
+        #####
+        ##### THEME INVERT (currently not working)
+        # print("Proceeding with Theme Invert process")
+        # if (self.current_theme_name().find('_Inverted') > -1):
+        #     print("Reversing the inverted theme to the original")
+        #     original_name = self.current_theme_name().replace("_Inverted","")
+        #     sublime.load_settings("Preferences.sublime-settings").erase("theme")
+        #     sublime.load_settings("Preferences.sublime-settings").set("theme", original_name)
+        #     sublime.save_settings('Preferences.sublime-settings')
+        # else:
+        #     # Check if there's already an inverted theme file
+        #     if not os.path.exists(self.inverted_theme_absolute_path()):
+        #         print('Inverted theme file not already made. Inverting theme.')
+        #         inverted_theme_dict = self.invert_theme()
+        #         self.write_sublime_file(inverted_theme_dict, self.inverted_theme_absolute_path())
+
+        #     # Update the settings file with the new theme.
+        #     print('Updating preferences file with theme:' +
+        #           self.inverted_theme_name())
+
+        #     sublime.load_settings("Preferences.sublime-settings").erase("theme")
+        #     sublime.load_settings("Preferences.sublime-settings").set("theme",
+        #               self.inverted_theme_name())
+            
+        #     sublime.save_settings('Preferences.sublime-settings')
+        # print("Theme Invert process completed")
+        #####
+        # Sublime fails to read theme and resets to "auto"
